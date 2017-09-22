@@ -23,6 +23,7 @@ package main
 //hard-coding.
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -31,11 +32,46 @@ import (
 )
 
 // SimpleChaincode example simple Chaincode implementation
+type TracableChaincode struct {
+}
+
+func (cc TracableChaincode) GetLatestWriteTxnForAsset(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	if len(args) != 1 {
+		return shim.Error("Incorrect number of arguments. Expecting 1")
+	}
+
+	A := args[0]
+
+	// Get the state from the ledger
+	// TODO: will be nice to have a GetAllState call to ledger
+	Aprovbytes, err := stub.GetState(A + "_prov")
+	if err != nil {
+		return shim.Error("Failed to get provenance info for " + A)
+	}
+	if Aprovbytes == nil {
+		return shim.Error("Provenance for " + A + " not found")
+	}
+
+	var a_prov shim.ProvenanceMeta
+
+	err = json.Unmarshal(Aprovbytes, &a_prov)
+
+	if err != nil {
+		return shim.Error("Fail to unmarshal provenance records for " + A)
+	}
+
+	return shim.Success([]byte(a_prov.TxID))
+}
+
+// SimpleChaincode example simple Chaincode implementation
 type SimpleChaincode struct {
+	TracableChaincode
 }
 
 func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	fmt.Println("ex02 Init")
+	stub.EnableProvenance()
+	fmt.Println("Enabling Provenance Tracking")
 	_, args := stub.GetFunctionAndParameters()
 	var A, B string    // Entities
 	var Aval, Bval int // Asset holdings
@@ -74,6 +110,8 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
 
 func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	fmt.Println("ex02 Invoke")
+	stub.EnableProvenance()
+	fmt.Println("Enabling Provenance Tracking")
 	function, args := stub.GetFunctionAndParameters()
 	if function == "invoke" {
 		// Make payment of X units from A to B
@@ -84,6 +122,8 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	} else if function == "query" {
 		// the old "Query" is now implemtned in invoke
 		return t.query(stub, args)
+	} else if function == "latest_txn" {
+		return t.GetLatestWriteTxnForAsset(stub, args)
 	}
 
 	return shim.Error("Invalid invoke function name. Expecting \"invoke\" \"delete\" \"query\"")
