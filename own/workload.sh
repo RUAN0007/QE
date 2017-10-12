@@ -7,6 +7,8 @@
 # Exit on first error
 set -e
 
+# NUM_IPHONE=100
+
 # don't rewrite paths for Windows Git Bash users
 export MSYS_NO_PATHCONV=1
 
@@ -67,23 +69,11 @@ function Manufacture() {
   docker exec -e "CORE_PEER_LOCALMSPID=Org1MSP" -e "CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp" cli peer chaincode invoke -o orderer.example.com:7050 -C mychannel -n supplychain -c '{"Args":["Assemble","Camera'"$1"'","Battery'"$1"'","Mainboard'"$1"'", "IPhone'"$1"'", "Manufacturer'"$1"'"]}'
   sleep 10
 }
-
-for i in {1..1000}
+for i in $(seq 1 $NUM_IPHONE);
 do
 sleep 0.01
 Manufacture $i >/dev/null & 
 done
-
-# Manufacture 0 >/dev/null & 
-# Manufacture 1 >/dev/null &
-# Manufacture 2 >/dev/null &
-# Manufacture 3 >/dev/null &
-# Manufacture 4 >/dev/null &
-# Manufacture 5 >/dev/null & 
-# Manufacture 6 >/dev/null &
-# Manufacture 7 >/dev/null &
-# Manufacture 8 >/dev/null &
-# Manufacture 9 >/dev/null &
 
 i=0
 for job in $(jobs -p)
@@ -100,6 +90,7 @@ done
 printf "\nTotal execution time : $(($(date +%s) - starttime)) secs ...\n\n"
 STATEDB_SIZE="$(docker exec peer0.org1.example.com  du -s --block-size=K  /var/hyperledger/production/ledgersData/stateLeveldb/ | sed 's/[^0-9]//g')"
 echo "State_DB SIZE: $STATEDB_SIZE"
-HISTORYDB_SIZE="$(docker exec peer0.org1.example.com  du -s --block-size=K  /var/hyperledger/production/ledgersData/historyLeveldb/ | sed 's/[^0-9]//g')"
-echo "History_DB SIZE: $HISTORYDB_SIZE"
+
+BLOCK_SIZE="$(docker exec peer0.org1.example.com  du -s --block-size=K  /var/hyperledger/production/ledgersData/chains/chains/mychannel/ | sed 's/[^0-9]//g')"
+echo "BLOCk SIZE: $BLOCK_SIZE"
 

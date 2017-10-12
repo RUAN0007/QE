@@ -227,8 +227,67 @@ func (t *SupplyChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		return t.purchase(stub, args)
 	} else if function == "Query" {
 		return t.query(stub, args)
+	} else if function == "Resell" {
+		return t.resell(stub, args)
+	} else if function == "latest_txn" {
+		return t.GetLatestWriteTxnForAsset(stub, args)
 	}
 	return shim.Error("Invalid invoke function name.")
+}
+
+func (t *SupplyChaincode) resell(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	if len(args) != 5 {
+		return shim.Error("Incorrect number of arguments. Expecting 5")
+	}
+	iphone_serial := args[0]
+	cur_owner := args[1]
+	cur_owner_account := args[2]
+	next_owner := args[3]
+	price, err := strconv.Atoi(args[4])
+
+	if err != nil {
+		return shim.Error("Expecting integer value for price ")
+	}
+
+	iphone_bytes, err := stub.GetState(iphone_serial)
+	if err != nil {
+		return shim.Error("No Manufactured iphone with ID " + iphone_serial)
+	}
+	var iphone Iphone
+	err = json.Unmarshal(iphone_bytes, &iphone)
+	if err != nil {
+		return shim.Error("Cannot unmarshal iPhone with ID " + iphone_serial)
+	}
+
+	if iphone.Owner != cur_owner {
+		return shim.Error("Iphone with ID " + iphone_serial + " is not owned by " + cur_owner)
+	}
+
+	bank_balance_raw, err := stub.GetState(cur_owner_account)
+	if err != nil {
+		return shim.Error("Cannot find account " + cur_owner_account)
+	}
+
+	bank_balance, err := strconv.Atoi(string(bank_balance_raw))
+	if err != nil {
+		return shim.Error("Expect integer for bank balance " + cur_owner_account)
+	}
+
+	bank_balance += price
+	// Put back the bank balance
+	err = stub.PutState(cur_owner_account, []byte(strconv.Itoa(bank_balance)))
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	iphone.Owner = next_owner
+	iphone_bytes, err = json.Marshal(iphone)
+	err = stub.PutState(iphone_serial, iphone_bytes)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	return shim.Success(nil)
 }
 
 func (t *SupplyChaincode) purchase(stub shim.ChaincodeStubInterface, args []string) pb.Response {

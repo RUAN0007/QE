@@ -1,5 +1,23 @@
-## Hyperledger Fabric Samples
+# Prerequiste
+  * Install relevant [Hyperledger Fabric 1.0 Prerequisite](http://hyperledger-fabric.readthedocs.io/en/latest/prereqs.html)
+  * Download the forked Hyperledger Fabric 1.0 [fork](https://github.com/RUAN0007/fabric) to build the relevant docker images. 
 
-Please visit the [installation instructions](http://hyperledger-fabric.readthedocs.io/en/latest/samples.html).
+## Query Latency
+First Setup the network via the command
+```
+cd own/; ./start.sh
+```
 
-<a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>
+Run the NodeJS SDK query to get latency for provenance level. 
+```
+node query.js
+```
+
+## Query Storage Size by varying data size
+```
+NUM_IPHONE=50; ./workload.sh
+```
+
+## Graph Plotting
+* Install [pyplot](https://matplotlib.org/api/pyplot_api.html) 
+* Refer to python scripts in own/plot

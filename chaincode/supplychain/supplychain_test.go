@@ -201,4 +201,17 @@ func Test(t *testing.T) {
 	}
 	checkIPhoneOwner(t, stub, "IPhone0", "Customer0")
 	checkState(t, stub, "DBS", "900")
+
+	// Resell IPhone using an account
+	res = stub.MockInvoke("1", [][]byte{
+		[]byte("Resell"), []byte("IPhone0"),
+		[]byte("Customer0"), []byte("DBS"),
+		[]byte("Customer1"), []byte("50")})
+
+	if res.Status != shim.OK {
+		fmt.Println("Resell IPhone failed: ", string(res.Message))
+		t.FailNow()
+	}
+	checkIPhoneOwner(t, stub, "IPhone0", "Customer1")
+	checkState(t, stub, "DBS", "950")
 }

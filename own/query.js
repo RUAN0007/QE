@@ -16,7 +16,7 @@ var options = {
     wallet_path: path.join(__dirname, './creds'),
     user_id: 'PeerAdmin',
     channel_id: 'mychannel',
-    chaincode_id: 'example_cc',
+    chaincode_id: 'supplychain',
     network_url: 'grpc://localhost:7051',
 };
 
@@ -31,15 +31,15 @@ var client = null;
 //   the second is the list of dependent reads and its version
 function GetDependency(asset, block_num, tx_num) {
     return Promise.resolve().then(() => {
-        console.log("Create a client and set the wallet location");
+        // console.log("Create a client and set the wallet location");
         client = new hfc();
         return hfc.newDefaultKeyValueStore({ path: options.wallet_path });
     }).then((wallet) => {
-        console.log("Set wallet path, and associate user ", options.user_id, " with application");
+        // console.log("Set wallet path, and associate user ", options.user_id, " with application");
         client.setStateStore(wallet);
         return client.getUserContext(options.user_id, true);
     }).then((user) => {
-        console.log("Check user is enrolled, and set a query URL in the network");
+        // console.log("Check user is enrolled, and set a query URL in the network");
         if (user === undefined || user.isEnrolled() === false) {
             throw new Error("User not defined, or not enrolled - error");
         }
@@ -125,15 +125,15 @@ function GetDependency(asset, block_num, tx_num) {
 //   the second is the list of dependent reads and its version
 function GetLastestDependency(asset) {
     return Promise.resolve().then(() => {
-        console.log("Create a client and set the wallet location");
+        // console.log("Create a client and set the wallet location");
         client = new hfc();
         return hfc.newDefaultKeyValueStore({ path: options.wallet_path });
     }).then((wallet) => {
-        console.log("Set wallet path, and associate user ", options.user_id, " with application");
+        // console.log("Set wallet path, and associate user ", options.user_id, " with application");
         client.setStateStore(wallet);
         return client.getUserContext(options.user_id, true);
     }).then((user) => {
-        console.log("Check user is enrolled, and set a query URL in the network");
+        // console.log("Check user is enrolled, and set a query URL in the network");
         if (user === undefined || user.isEnrolled() === false) {
             throw new Error("User not defined, or not enrolled - error");
         }
@@ -141,12 +141,10 @@ function GetLastestDependency(asset) {
         channel.addPeer(client.newPeer(options.network_url));
         return;
     }).then(() => {
-        console.log("Make query");
+        // console.log("Make query");
         var transaction_id = client.newTransactionID();
-        console.log("Assigning transaction_id: ", transaction_id._transaction_id);
+        // console.log("Assigning transaction_id: ", transaction_id._transaction_id);
 
-        // queryCar - requires 1 argument, ex: args: ['CAR4'],
-        // queryAllCars - requires no arguments , ex: args: [''],
         const request = {
             chaincodeId: options.chaincode_id,
             txId: transaction_id,
@@ -167,11 +165,11 @@ function GetLastestDependency(asset) {
             console.error("Only single payload is required from the query.")
         } 
 
-        console.log("Latest Written tnx ID for ", asset, 
-                    " is ", query_responses[0].toString());
+        // console.log("Latest Written tnx ID for ", asset, 
+        //             " is ", query_responses[0].toString());
         return query_responses[0].toString()
     }).then((last_wrt_txn_id) => {
-        console.log("Make query for a transaction ", last_wrt_txn_id);
+        // console.log("Make query for a transaction ", last_wrt_txn_id);
         return channel.queryTransaction(last_wrt_txn_id);
     }).then((processed_txn) => {
         console.log("returned from query");
@@ -233,15 +231,133 @@ function GetLastestDependency(asset) {
     });
 };
 
-// GetLastestDependency('b').then((provenance) => {
-//     console.log("Dependency for a: ", provenance);
+// GetLastestDependency('IPhone0').then((provenance) => {
+//     console.log(util.inspect(provenance, false, null));
+//     // console.log("Txn_NUmber for IPhone0: ", provenance[1][0]["version"]["tx_num"].toInt());
+//     // console.log("Block Number for IPhone0: ", provenance[1][0]["version"]["block_num"].toInt());
 // }).catch((err) => {
 //     console.error("Caught Error", err);
 // });
 
 
-GetDependency('a', 1, 0).then((provenance) => {
-     console.log("Dependency for a: ", provenance);
- }).catch((err) => {
+// GetDependency('IPhone0', 6, 0).then((provenance) => {
+//      console.log("Dependency for IPhone0: ", provenance);
+//  }).catch((err) => {
+//     console.error("Caught Error", err);
+// });
+
+
+// Trace Line IPhone -> IPhone -> IPhone -> Mainboard -> CPU -> ALU
+
+console.time('level0');
+console.time('level1');
+console.time('level2');
+console.time('level3');
+console.time('level4');
+console.time('level5');
+console.time('level6');
+
+GetLastestDependency('IPhone0').then((result) => {
+    var prov = result[0];
+    var func_name = prov["FuncName"];
+    console.log("===================", func_name, "=====================");
+    var dep_reads = result[1];
+    var i, pre_blk_num, pre_txn_num;
+    for (i = 0; i < dep_reads.length; ++i) {
+      if(dep_reads[i]["key"] !== "IPhone0") {
+        console.log("Add to Account: ", dep_reads[i]["key"]);
+      } else {
+        pre_blk_num = dep_reads[i]["version"]["block_num"].toInt();
+        pre_txn_num = dep_reads[i]["version"]["tx_num"].toInt();
+      }
+    }
+    console.log("=======================================================");
+    console.timeEnd('level0');
+    return GetDependency('IPhone0', pre_blk_num, pre_txn_num); 
+
+}).then((result) => {
+    var prov = result[0];
+    var func_name = prov["FuncName"];
+    console.log("===================", func_name, "=====================");
+    var dep_reads = result[1];
+    var i, pre_blk_num, pre_txn_num;
+    for (i = 0; i < dep_reads.length; ++i) {
+      if(dep_reads[i]["key"] !== "IPhone0") {
+        console.log("Deduct From Account: ", dep_reads[i]["key"]);
+      } else {
+        pre_blk_num = dep_reads[i]["version"]["block_num"].toInt();
+        pre_txn_num = dep_reads[i]["version"]["tx_num"].toInt();
+      }
+    }
+    console.log("=======================================================");
+    console.timeEnd('level1');
+    return GetDependency('IPhone0', pre_blk_num, pre_txn_num); 
+
+}).then((result) => {
+    var prov = result[0];
+    var func_name = prov["FuncName"];
+    console.log("===================", func_name, "=====================");
+
+
+    var dep_reads = result[1];
+    var pre_blk_num = dep_reads[0]["version"]["block_num"].toInt();
+    var pre_txn_num = dep_reads[0]["version"]["tx_num"].toInt();
+    console.log("=======================================================");
+
+    console.timeEnd('level2');
+    return GetDependency('IPhone0', pre_blk_num, pre_txn_num); 
+}).then((result) => {
+    var prov = result[0];
+    var func_name = prov["FuncName"];
+    console.log("===================", func_name, "=====================");
+
+    var dep_reads = result[1];
+    var i, pre_blk_num, pre_txn_num;
+    console.log("Dependent Components: ");
+    for (i = 0; i < dep_reads.length; ++i) {
+      console.log("  ", dep_reads[i]["key"]);
+      if(dep_reads[i]["key"] === "Mainboard0") {
+        pre_blk_num = dep_reads[i]["version"]["block_num"].toInt();
+        pre_txn_num = dep_reads[i]["version"]["tx_num"].toInt();
+      }    
+    }
+    console.log("=======================================================");
+    console.timeEnd('level3');
+    return GetDependency('Mainboard0', pre_blk_num, pre_txn_num); 
+}).then((result) => {
+    var prov = result[0];
+    var func_name = prov["FuncName"];
+    console.log("===================", func_name, "=====================");
+
+    var dep_reads = result[1];
+    var i, pre_blk_num, pre_txn_num;
+
+    console.log("Dependent Components: ");
+    for (i = 0; i < dep_reads.length; ++i) {
+      console.log("  ", dep_reads[i]["key"]);
+      if(dep_reads[i]["key"] === "CPU0") {
+        pre_blk_num = dep_reads[i]["version"]["block_num"].toInt();
+        pre_txn_num = dep_reads[i]["version"]["tx_num"].toInt();
+      }    
+    }
+    console.log("=======================================================");
+    console.timeEnd('level4');
+    return GetDependency('CPU0', pre_blk_num, pre_txn_num); 
+}).then((result) => {
+    var prov = result[0];
+    var func_name = prov["FuncName"];
+    console.log("===================", func_name, "=====================");
+
+    var dep_reads = result[1];
+    var i;
+
+    console.log("Dependent Components: ");
+    for (i = 0; i < dep_reads.length; ++i) {
+      console.log("  ", dep_reads[i]["key"]);
+    }
+    console.log("=======================================================");
+    console.timeEnd('level5'); 
+
+}).catch((err) => {
     console.error("Caught Error", err);
 });
